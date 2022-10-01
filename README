@@ -1,0 +1,16 @@
+Features:
+
+- This program takes two input JPEG files and render a heightfield
+- The first JPEG image will be used to calculate the heights based on the grayscale value
+  at every pixel if it is a black and white image, or its red/green/blue values if it is a colored image
+- The second JPEG image is optional, if given then user can press key '4' to render the heightfield using color values
+  from the second image
+- Press left click to spin the heightfield around
+- Press left click while holding shift to zoom in/out of the heightfield
+- Press left click while pressing key 't' to move the hieghtfield around
+- The default render mode is solid triangle, press '1' to switch to point, '2' to lines and '3' to solid triangles
+
+Extra credit:
+
+- Support color in input images
+- User can choose to color the vertices based on color values taken from another image of equal size

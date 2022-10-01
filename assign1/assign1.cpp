@@ -33,6 +33,11 @@ float g_vLandScale[3] = {1.0, 1.0, 1.0};
 
 /* see <your pic directory>/pic.h for type Pic */
 Pic *g_pHeightData;
+// arbitrary image
+Pic *ag_pHeightData;
+
+bool hasTexturemapImage = false;
+bool displayTexture = false;
 
 /* Write a screenshot to the specified filename */
 void saveScreenshot(char *filename)
@@ -87,8 +92,10 @@ rotation/translation/scaling */
   /* reset transformation */
   glLoadIdentity();
 
-  gluLookAt(0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+  // sets the camera position
+  gluLookAt(0.0, 0.0, 6.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
 
+  // sets translation, rotation, and scale
   glTranslatef(g_vLandTranslate[0], g_vLandTranslate[1], g_vLandTranslate[2]);
   glRotatef(g_vLandRotate[0], 1, 0, 0);
   glRotatef(g_vLandRotate[1], 0, 1, 0);
@@ -113,25 +120,73 @@ rotation/translation/scaling */
 
   int width = int(g_pHeightData->nx);
   int height = int(g_pHeightData->ny);
+  int bpp = int(g_pHeightData->bpp);
   for (int i = 0; i < height - 1; i++)
   {
     glBegin(GL_TRIANGLE_STRIP);
     for (int j = 0; j < width; j++)
     {
-      float indx0 = PIC_PIXEL(g_pHeightData, j, i, 0);
-      float indx1 = PIC_PIXEL(g_pHeightData, j, i + 1, 0);
+      // if the input JPEG file has 1 bpp
+      if (bpp == 1)
+      {
+        float indx0 = PIC_PIXEL(g_pHeightData, j, i, 0);
+        float indx1 = PIC_PIXEL(g_pHeightData, j, i + 1, 0);
 
-      indx0 = GLfloat(indx0);
-      indx1 = GLfloat(indx1);
+        indx0 = GLfloat(indx0);
+        indx1 = GLfloat(indx1);
 
-      float z0 = indx0 / 255;
-      float z1 = indx1 / 255;
+        float z0 = indx0 / 255;
+        float z1 = indx1 / 255;
 
-      glColor3f(z0, z0, z0);
-      glVertex3f((j - 0.5 * width) / width * 5, (i - 0.5 * height) / height * 5, -z0);
+        glColor3f(z0, z0, z0);
+        glVertex3f((j - 0.5 * width) / width * 5, (i - 0.5 * height) / height * 5, -z0 * 2);
 
-      glColor3f(z1, z1, z1);
-      glVertex3f((j - 0.5 * width) / width * 5, (i + 1 - 0.5 * height) / height * 5, -z1);
+        glColor3f(z1, z1, z1);
+        glVertex3f((j - 0.5 * width) / width * 5, (i + 1 - 0.5 * height) / height * 5, -z1 * 2);
+      }
+      // if the input JPEG file has 3bpp
+      else if (bpp == 3)
+      {
+        float rIndx0 = PIC_PIXEL(g_pHeightData, j, i, 0);
+        float gIndx0 = PIC_PIXEL(g_pHeightData, j, i, 1);
+        float bIndx0 = PIC_PIXEL(g_pHeightData, j, i, 2);
+
+        float rIndx1 = PIC_PIXEL(g_pHeightData, j, i + 1, 0);
+        float gIndx1 = PIC_PIXEL(g_pHeightData, j, i + 1, 1);
+        float bIndx1 = PIC_PIXEL(g_pHeightData, j, i + 1, 2);
+
+        // scale the sum of three colors by 3 * 255 * 10
+        float z0 = (rIndx0 + gIndx0 + bIndx0) / 7650;
+        float z1 = (rIndx1 + gIndx1 + bIndx1) / 7650;
+
+        // If rendering color using another image of equal size
+        if (displayTexture)
+        {
+          float rIndx0ag = PIC_PIXEL(ag_pHeightData, j, i, 0);
+          float gIndx0ag = PIC_PIXEL(ag_pHeightData, j, i, 1);
+          float bIndx0ag = PIC_PIXEL(ag_pHeightData, j, i, 2);
+
+          float rIndx1ag = PIC_PIXEL(ag_pHeightData, j, i + 1, 0);
+          float gIndx1ag = PIC_PIXEL(ag_pHeightData, j, i + 1, 1);
+          float bIndx1ag = PIC_PIXEL(ag_pHeightData, j, i + 1, 2);
+
+          // set the color using pixels values of the arbitrary image
+          glColor3f(rIndx0ag / 255, gIndx0ag / 255, bIndx0ag / 255);
+          glVertex3f((j - 0.5 * width) / width * 5, (i - 0.5 * height) / height * 5, -z0 * 2);
+
+          glColor3f(rIndx1ag / 255, gIndx1ag / 255, bIndx1ag / 255);
+          glVertex3f((j - 0.5 * width) / width * 5, (i + 1 - 0.5 * height) / height * 5, -z1 * 2);
+        }
+        else
+        {
+
+          glColor3f(rIndx0 / 255, gIndx0 / 255, bIndx0 / 255);
+          glVertex3f((j - 0.5 * width) / width * 5, (i - 0.5 * height) / height * 5, -z0 * 2);
+
+          glColor3f(rIndx1 / 255, gIndx1 / 255, bIndx1 / 255);
+          glVertex3f((j - 0.5 * width) / width * 5, (i + 1 - 0.5 * height) / height * 5, -z1 * 2);
+        }
+      }
     }
     glEnd();
   }
@@ -251,6 +306,7 @@ void mousebutton(int button, int state, int x, int y)
   g_vMousePos[1] = y;
 }
 
+// Function to bind keys to different functions
 void keyboard(unsigned char key, int x, int y)
 {
   if (key == '1')
@@ -259,6 +315,29 @@ void keyboard(unsigned char key, int x, int y)
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   if (key == '3')
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+  // rendering using color from the other image
+  if (key == '4')
+  {
+    if (hasTexturemapImage == true)
+    {
+      displayTexture = true;
+      glClearColor(0.0, 0.0, 0.0, 0.0);
+      // reruns the display function
+      glutPostRedisplay();
+    }
+  }
+
+  /*
+  if (key == '4')
+    wireframeSolid();
+  */
+  // binds "t" key to translation
+  if (key == 't')
+    g_ControlState = TRANSLATE;
+  // binds "q" key to rotation
+  if (key == 'q')
+    g_ControlState = ROTATE;
 }
 
 int main(int argc, char **argv)
@@ -270,6 +349,14 @@ int main(int argc, char **argv)
   }
 
   g_pHeightData = jpeg_read(argv[1], NULL);
+
+  // if users specifies another image
+  if (argc == 3)
+  {
+    // read data from the other image
+    ag_pHeightData = jpeg_read(argv[2], NULL);
+    hasTexturemapImage = true;
+  }
   if (!g_pHeightData)
   {
     printf("error reading %s.\n", argv[1]);
